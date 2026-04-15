@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install:*)",
+      "Read(//etc/**)",
+      "Bash(pnpm config:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(kill -9 2059)",
+      "Bash(curl:*)",
+      "Bash(xxd)"
+    ]
+  }
+}
