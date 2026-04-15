@@ -1,0 +1,24 @@
+# v0 runtime files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+
+# Common ignores
+node_modules/
+.next/
+.env*.local
+.DS_Store
+.env
+
+# Markdown files (except CLAUDE.md and next_steps.md)
+*.md
+!CLAUDE.md
+!next_steps.md
+
+# Editor and IDE
+.vscode/
+
+# Miscellaneous
+.npmrc
+tsconfig.tsbuildinfo
+next-env.d.ts
