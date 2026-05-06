@@ -279,6 +279,14 @@ bun run src/workers/task.worker.ts
 
 ## Architecture
 
+### Multitenant Architecture
+
+StoracleAgent isolates tenants at the **tool layer, not the prompt layer** — the LLM never receives an `organizationId`:
+
+- **Org-scoped tools** — `organizationId` is injected into tool constructors only (`CreateTaskTool(orgId)`, `PaySupplierTool(orgId)`, `CreateNotificationTool(orgId)`, etc.). Tools enforce per-org scoping in their internal DB queries. The LLM has no knowledge of tenant boundaries.
+- **Pre-filtered context** — agent handlers query the DB filtered by `organizationId` before passing data to the LLM, so the agent naturally acts within its tenant context without ever seeing the identifier.
+- **Tool wrapper audit trail** — `wrapTool()` attaches `organizationId`/`taskId` to every `agent_logs` entry, keeping per-tenant audit trails without exposing the ID to the agent.
+
 ### Session Key Security
 
 - The master session private key lives **only** in the server's `.env` file — never in the frontend or in transit.

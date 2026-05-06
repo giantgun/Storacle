@@ -6,7 +6,7 @@
 
 ## Overview
 
-Storacle replaces manual procurement workflows with programmable, policy-constrained AI agents. Businesses configure spending rules and supplier whitelists, and the system autonomously handles the rest: detecting low stock, emailing suppliers, OCR-ing incoming invoices, validating prices, and executing USDT payments via ERC-4337 account abstraction.
+Storacle is a **multi-tenant** platform that replaces manual procurement workflows with programmable, policy-constrained AI agents. Businesses configure spending rules and supplier whitelists, and the system autonomously handles the rest: detecting low stock, emailing suppliers, OCR-ing incoming invoices, validating prices, and executing USDT payments via ERC-4337 account abstraction — with full org-level data isolation across all tenants.
 
 ---
 
@@ -60,13 +60,33 @@ All agent activity, inventory changes, and notifications stream to the frontend 
 
 ---
 
+## Demos
+
+| Demo | Description | Link |
+|------|-------------|------|
+| **Full System Walkthrough** | End-to-end demo of the procurement pipeline: inventory monitoring → supplier email → invoice OCR → policy verification → USDT payment execution | [![Storacle Demo](https://img.youtube.com/vi/Kl8WBsUc_08/maxresdefault.jpg)](https://youtu.be/Kl8WBsUc_08) |
+
+Additional runnable demos are available in the embedded sub-projects — see the individual READMEs for walkthrough scripts and test scenarios.
+
+---
+
 ## Security Model
+
+### Multitenant Architecture
+
+Storacle isolates tenants at the **tool layer, not the prompt layer** — the LLM never sees an `organizationId`:
+
+- **Org-scoped tools, not prompts** — `organizationId` is injected into tool constructors (`CreateTaskTool(orgId)`, `PaySupplierTool(orgId)`, etc.), not into the system prompt. The LLM operates on scoped data without knowing tenant boundaries exist.
+- **Pre-query filtering** — agent handlers filter DB results by `organizationId` before the LLM ever processes them (e.g., fetching only the calling org's inventory items), so the agent naturally acts within its tenant context.
+- **Audit isolation via tool wrappers** — `wrapTool()` attaches `organizationId` to every log entry in `agent_logs`, keeping audit trails per-tenant without the LLM managing the identifier.
+
+### Key Protection Layers
 
 - **Private keys never touch the frontend** — all signing happens in MetaMask (EIP-1193)
 - **Session keys encrypted at rest** — RSA-2048 OAEP encryption, decrypted in-memory only during payment execution
-- **Spending policies enforced on-chain** — Zerodev PermissionValidator ensures the agent cannot spend outside the configured limits
+- **Spending policies enforced on-chain** — Zerodev PermissionValidator ensures the agent cannot spend outside the configured limits per organization
 - **5 validation gates** before any payment executes — OCR, inventory check, price check, on-chain policy verification, due-date check
-- **Full audit trail** — every agent decision, tool call, and payment is logged with reasoning and timestamps
+- **Full audit trail** — every agent decision, tool call, and payment is logged with reasoning and timestamps per organization
 
 ---
 
