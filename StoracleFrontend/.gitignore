@@ -14,6 +14,7 @@ node_modules/
 *.md
 !CLAUDE.md
 !next_steps.md
+!README.md
 
 # Editor and IDE
 .vscode/
