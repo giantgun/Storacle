@@ -1,375 +1,120 @@
-# 🚀 Storacle
+# Storacle
 
-## Autonomous Procurement & Payments — Powered by HSP
-
----
-
-## 🌍 Vision
-
-Storacle is building toward a future where **procurement managers are completely replaced**.
-
-Businesses will no longer manually monitor inventory, negotiate invoices, or execute payments.  
-Instead, autonomous agents will **observe, decide, and act — continuously**.
-
-At the core of this system is the **HashKey Settlement Protocol (HSP)**, enabling:
-
-- Institutionally compliant payments  
-- Verifiable audit trails  
-- Trusted supplier settlement  
-
-Storacle replaces human-driven procurement with **programmable, policy-constrained intelligence**.
+**Autonomous Procurement & Payments** — AI agents that monitor inventory, process invoices, and execute payments within user-defined policy constraints.
 
 ---
 
-## ⚠️ Note on HSP Integration
+## Overview
 
-The HSP integration in this demo is **partially mocked for demonstration purposes**.
-
-- The full architecture for HSP-based invoice generation, processing, and settlement **is implemented in the repository**
-- Some components (especially around production-grade settlement flows) require **final tuning and alignment with HSP infrastructure**
-
-> The system is designed **HSP-first**, and all relevant code paths already exist — this is a matter of refinement, not redesign.
+Storacle replaces manual procurement workflows with programmable, policy-constrained AI agents. Businesses configure spending rules and supplier whitelists, and the system autonomously handles the rest: detecting low stock, emailing suppliers, OCR-ing incoming invoices, validating prices, and executing USDT payments via ERC-4337 account abstraction.
 
 ---
 
-## 🧩 System Overview
+## System Architecture
 
-Storacle is composed of three tightly integrated components:
+Storacle is composed of two tightly integrated components:
 
-1. **Frontend (Control Layer)** — Configuration, monitoring, approvals  
-2. **Backend (Execution Layer)** — Source of truth, validation, execution  
-3. **AI Agents (Decision Layer)** — Autonomous reasoning and actions  
+| Component | Role |
+|-----------|------|
+| **StoracleAgent** | Backend server — source of truth for data, AI agent execution, payment processing, real-time event streaming |
+| **StoracleFrontend** | Web dashboard — wallet auth, inventory/supplier management, policy configuration, real-time monitoring |
 
-Together, they form a **closed-loop procurement system**:
+Together they form a closed-loop procurement system:
 
-
+```
 Inventory → Prediction → Invoice → Verification → Payment → Fulfillment
-
-
-All financial execution flows through **HSP**, ensuring:
-
-- Compliance  
-- Traceability  
-- Auditability  
+```
 
 ---
 
-# 🖥️ 1. Frontend — Control Layer
+## How It Works
 
-The frontend is a **configuration and visibility surface**, not a source of truth.
+### Procurement Pipeline
 
----
+1. Inventory drops (simulated purchase or live sale)
+2. Procurement agent checks stock levels against rolling depletion averages
+3. If stock will run out before the supplier can deliver, the agent emails a restock request
+4. The supplier responds with an invoice via email
 
-## Responsibilities
+### Invoice Processing Pipeline
 
-- Wallet connection (EIP-1193 / MetaMask)  
-- Session policy configuration (Zerodev)  
-- Inventory & supplier management  
-- Real-time monitoring via SSE  
-- Manual confirmations (e.g. goods arrival)  
+1. Supplier email hits the AgentMail webhook → payment task created
+2. Payment agent OCRs the invoice (Gemini 2.0 Flash) → extracts product, quantity, price, due date
+3. Agent verifies inventory is actually depleted
+4. Agent compares invoice price against the expected purchase price
+5. **Gate 4**: Agent verifies the supplier is in the user-approved on-chain policy whitelist and the session hasn't expired
+6. If all gates pass and the invoice is due soon → agent executes USDT payment via ERC-4337 UserOperation
 
----
+### Real-Time Monitoring
 
-## Key Principles
-
-- ❌ Never holds private keys  
-- ❌ Cannot execute payments  
-- ❌ Cannot bypass backend validation  
-- ✅ Only proposes actions  
-- ✅ All actions require backend verification  
+All agent activity, inventory changes, and notifications stream to the frontend via Server-Sent Events — no polling, no manual refresh.
 
 ---
 
-## Core Features
+## Repositories
 
-### 🧠 Agent Configuration
-
-- Supplier whitelisting  
-- Spending limits (per supplier, per day)  
-- Transaction caps  
-- Expiry windows  
+| Repository | Description |
+|-----------|-------------|
+| [StoracleAgent](./StoracleAgent) | Express + Supabase backend with LangChain AI agents, task queue, ERC-4337 payment execution |
+| [StoracleFrontend](./StoracleFrontend) | Next.js dashboard with SIWE authentication, inventory management, Zerodev policy builder |
 
 ---
 
-### 📊 Real-Time Dashboard
+## Security Model
 
-- Inventory levels  
-- In-transit orders  
-- Notifications  
-- AI terminal logs  
-
----
-
-### 📡 Live Updates (SSE)
-
-- Inventory events  
-- Agent logs  
-- Payment confirmations  
-- Notifications  
+- **Private keys never touch the frontend** — all signing happens in MetaMask (EIP-1193)
+- **Session keys encrypted at rest** — RSA-2048 OAEP encryption, decrypted in-memory only during payment execution
+- **Spending policies enforced on-chain** — Zerodev PermissionValidator ensures the agent cannot spend outside the configured limits
+- **5 validation gates** before any payment executes — OCR, inventory check, price check, on-chain policy verification, due-date check
+- **Full audit trail** — every agent decision, tool call, and payment is logged with reasoning and timestamps
 
 ---
 
-# 🧠 2. Backend — Execution Layer (Source of Truth)
+## Tech Stack
 
-The backend is the **heart of Storacle**.
-
-Everything flows through it:
-
-- State  
-- Validation  
-- Payments  
-- Audit logs  
-
----
-
-## Responsibilities
-
-- Authentication (Web3 via Supabase)  
-- Inventory & supplier state management  
-- Task queue + worker execution  
-- AI agent orchestration  
-- Payment execution via ERC-4337  
-- **HSP invoice + settlement integration**  
-- Real-time event broadcasting (SSE)  
+| Category | Technology |
+|----------|-----------|
+| Frontend | Next.js 16, React 19, TypeScript 5.7, Tailwind CSS 4, shadcn/ui |
+| Backend | Bun, Express 5, Supabase (PostgreSQL + Auth + Realtime) |
+| AI Agents | LangChain.js + Gemini 2.5 Flash |
+| Invoice OCR | Gemini 2.0 Flash |
+| Blockchain | ERC-4337, Zerodev Kernel v3.1, viem |
+| Payments | USDT via ERC-4337 UserOperation |
+| Email | AgentMail SDK |
+| Real-Time | Server-Sent Events (SSE) |
 
 ---
 
-## 🔐 Security Model
+## Getting Started
 
-- Session keys stored **encrypted (RSA-2048)**  
-- Policies enforced **at execution time**  
-- Supplier verification required before payment  
-- No private keys exposed to frontend  
+### Prerequisites
 
----
+- [Bun](https://bun.sh/) 1.3+
+- [pnpm](https://pnpm.io/) 9+
+- [Supabase](https://supabase.com/) project
+- [Alto](https://github.com/pimlicolabs/alto) or another ERC-4337 bundler
+- [AgentMail](https://agentmail.io/) inbox
+- MetaMask browser extension
 
-## 💳 Payments via HSP
+### Quick Start
 
-HSP is not just an integration — it is **core infrastructure**.
+```bash
+# Backend
+cd StoracleAgent
+cp .env.example .env    # Fill in your credentials
+bun install
+bun run src/server.ts
 
----
+# Frontend (separate terminal)
+cd StoracleFrontend
+pnpm install
+pnpm dev
+```
 
-### Role of HSP
-
-- Invoice generation (via supplier portal)  
-- Standardized payment requests  
-- Settlement coordination  
-- Audit-ready transaction trails  
-
----
-
-### Flow
-
-
-Supplier → HSP Invoice → Storacle → Verification → Payment → On-chain settlement
-
+See the individual READMEs in each repository for detailed setup instructions and environment configuration.
 
 ---
 
-### Why HSP Matters
+## License
 
-- Ensures **institutional compliance**  
-- Provides **consistent invoice standards**  
-- Enables **auditable procurement flows**  
-- Bridges automation with **real-world financial trust**  
-
----
-
-## 🧾 Audit & Traceability
-
-Every action in Storacle is logged:
-
-- Inventory events  
-- Agent decisions  
-- Invoice processing  
-- Payment execution  
-
-Combined with HSP:
-
-→ Creates a **fully auditable procurement pipeline**
-
----
-
-# 🤖 3. AI Agents — Decision Layer
-
-AI agents are responsible for **thinking and acting**.
-
-They do not just automate — they **make decisions**.
-
----
-
-## 🛒 Procurement Agent
-
-Triggers when inventory changes.
-
-### Responsibilities
-
-- Monitor stock levels  
-- Predict depletion (rolling averages)  
-- Decide when to reorder  
-- Request invoices from suppliers via HSP  
-
----
-
-## 💸 Payment Agent
-
-Triggers when an invoice is received.
-
----
-
-### 5-Gate Validation System
-
-1. **Invoice Parsing (OCR)**  
-2. **Inventory Check**  
-3. **Price Validation**  
-4. **Supplier Verification (Policy + On-chain)**  
-5. **Payment Execution (ERC-4337)**  
-
----
-
-Only after passing all gates:
-
-→ Payment is executed via an **HSP-backed flow**
-
----
-
-## 🧠 Key Insight
-
-Policies defined in the frontend become **hard constraints** on agent behavior.
-
-> The agent is autonomous — but never uncontrolled.
-
----
-
-# 🔁 End-to-End Flow
-
-## Autonomous Procurement Loop
-
-1. Inventory drops  
-2. Agent predicts depletion  
-3. Invoice request sent  
-4. Supplier generates invoice via HSP  
-5. Invoice received and parsed  
-6. Validation gates executed  
-7. Payment executed  
-8. Order marked in-transit  
-9. User confirms delivery  
-10. Inventory updated  
-
----
-
-# ⚙️ Architecture Summary
-
-## Frontend
-- Next.js  
-- SSE client  
-- Zerodev policy builder  
-
-## Backend
-- Express + Supabase  
-- Task queue worker  
-- RSA encryption  
-- Payment services  
-
-## Blockchain
-- ERC-4337 smart accounts  
-- Zerodev Kernel  
-- Sepolia testnet  
-
-## AI
-- Gemini (decision + OCR)  
-- LangChain tools  
-
-## Payments
-- USDT (testnet)  
-- **HSP for invoices + settlement**
-
----
-
-# 🔐 Future-Proofing Supplier Identity
-
-In production:
-
-- Supplier addresses will **not be hardcoded**  
-- **Zero-knowledge proofs (ZK proofs)** will validate supplier identity  
-
----
-
-### Why This Matters
-
-- HSP settlement may involve **changing addresses**  
-- Policies must remain valid across **dynamic identities**  
-
----
-
-# 🌍 Future Work
-
-Storacle is evolving into a **fully autonomous financial operations layer**.
-
----
-
-## 💱 Compliant Fiat & Hedging Layer
-
-- Integration with **compliant fiat systems**  
-- AI agents will:
-
-  - Convert volatile assets into **stablecoins**  
-  - Hedge against inflation automatically  
-  - Optimize treasury allocation  
-
----
-
-### Impact
-
-- Protects businesses in **emerging markets**  
-- Reduces exposure to currency instability  
-- Enables **globally stable procurement operations**  
-
----
-
-## 🧠 Advanced Agent Intelligence
-
-- Supplier reliability scoring  
-- Dynamic pricing optimization  
-- Multi-supplier negotiation strategies  
-
----
-
-## 🔗 Deeper HSP Integration
-
-- Native settlement confirmations  
-- Expanded invoice standards  
-- Multi-party payment flows  
-
----
-
-## 🌐 Multi-Chain Support
-
-- Mainnet deployments  
-- Cross-chain payments  
-- Expanded token support  
-
----
-
-## 📊 Analytics & Insights
-
-- Procurement efficiency metrics  
-- Spending intelligence dashboards  
-- Predictive financial planning  
-
----
-
-# ✨ Closing Thought
-
-Storacle is not just automating procurement.
-
-It is **redefining it**.
-
-By combining:
-
-- AI decision-making  
-- Programmable payments  
-- HSP-backed compliance  
-
-…it creates a system where businesses no longer *manage operations* —  
-they **define rules**, and the system executes flawlessly.
+MIT
